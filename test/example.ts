@@ -1,7 +1,7 @@
 import { network } from "hardhat";
 import assert from "assert";
 
-import { sharedBeforeEach } from "../lib/shared-setup";
+import { sharedBeforeEach } from "../lib/shared-before-each";
 
 const TEST_ACCOUNT = "0x1234567890123456789012345678901234567890";
 
