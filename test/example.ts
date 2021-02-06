@@ -15,13 +15,18 @@ describe("Testing the helper by transferring some eth", function () {
   });
 
   describe("With a nested describe", function () {
-    sharedBeforeEach(network.provider, async function () {
-      await send1WeiToTestAccount();
-    });
+    sharedBeforeEach(
+      "Optional title, like in beforeEach. Helpful for debugging",
+      network.provider,
+      async function () {
+        await send1WeiToTestAccount();
+      }
+    );
 
     describe("With two weis", function () {
       sharedBeforeEach(network.provider, async function () {
         await send1WeiToTestAccount();
+        throw new Error();
       });
 
       testWithNWei(2);
