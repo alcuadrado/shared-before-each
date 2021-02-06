@@ -1,0 +1,15 @@
+{
+  "name": "shared-before-each",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "hardhat test"
+  },
+  "license": "Unlicense",
+  "devDependencies": {
+    "@types/mocha": "^8.2.0",
+    "hardhat": "^2.0.8",
+    "ts-node": "^9.1.1",
+    "typescript": "^4.1.3"
+  }
+}
