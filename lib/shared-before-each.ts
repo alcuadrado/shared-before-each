@@ -42,13 +42,13 @@ export function sharedBeforeEach(
     maybeProvider = optionalProvider;
   }
 
-  let intialized = false;
+  let initialized = false;
 
   beforeEach(
     wrapWithTitle(title, "Running shared before each or reverting"),
     async function () {
       const provider = await getProvider(maybeProvider);
-      if (!intialized) {
+      if (!initialized) {
         const prevSnapshot = SNAPSHOTS.pop();
         if (prevSnapshot !== undefined) {
           await revert(provider, prevSnapshot);
@@ -58,7 +58,7 @@ export function sharedBeforeEach(
         await initializer.call(this);
 
         SNAPSHOTS.push(await takeSnapshot(provider));
-        intialized = true;
+        initialized = true;
       } else {
         const snapshotId = SNAPSHOTS.pop()!;
         await revert(provider, snapshotId);
@@ -68,7 +68,7 @@ export function sharedBeforeEach(
   );
 
   after(async function () {
-    if (intialized) {
+    if (initialized) {
       SNAPSHOTS.pop();
     }
   });
