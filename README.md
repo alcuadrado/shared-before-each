@@ -1,20 +1,29 @@
-# `sharedBeforeEach` Mocha helper for Hardhat Network and Ganache
+# `sharedBeforeEach` and `resetAfter` Mocha helpers for Hardhat Network and Ganache
 
-This repository has a single Mocha helper, [`sharedBeforeEach`](./lib/shared-before-each.ts)
-which acts like a `beforeEach`. It acts as `beforeEach`, but executes the initializer
-just once. It internally uses Hardhat Network and Ganache's snapshots and reverts instead of
-re-executing the initializer.
+This repository has two Mocha helpers, [`sharedBeforeEach`](./lib/shared-before-each.ts)
+and [`revertAfter`](./lib/revert-after.ts).
+
+`sharedBeforeEach` acts like a `beforeEach`, but executes the initializer just once. It
+internally uses Hardhat Network and Ganache's snapshots and reverts instead of re-executing
+the initializer. Note that it doesn't revert the state after the tests are executed, so the
+modifications made by the last test are visible by others.
+
+`revertAfter` takes a snapshot in a `before` hook, and reverts to it in an `after`.
 
 ## Installation
 
-This helper isn't distributed in any way other than this repository, so just copy and paste it.
+These helpers aren't distributed in any way other than this repository, so just copy and paste them.
 
 ## Usage
 
-Just use it instead of `beforeEach`. Something like this:
+Just use `sharedBeforeEach` instead of `beforeEach`, and `revertAfter` as you want it.
+
+Something like this:
 
 ```js
 describe("Contract C", function () {
+  revertAfter();
+
   let c;
 
   sharedBeforeEach(hre.network.provider, async function () {
@@ -28,7 +37,7 @@ describe("Contract C", function () {
 });
 ```
 
-This helper also works with nested `describe` calls, just like `beforeEach`.
+These helpers also works with nested `describe` calls, just like `beforeEach` and `after`.
 
 You can find a real example in [`test/example.ts`](./test/example.ts).
 

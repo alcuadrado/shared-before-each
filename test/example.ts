@@ -2,12 +2,16 @@ import { network } from "hardhat";
 import assert from "assert";
 
 import { sharedBeforeEach } from "../lib/shared-before-each";
+import { revertAfter } from "../lib/revert-after";
 
 const TEST_ACCOUNT = "0x1234567890123456789012345678901234567890";
 
 describe("Testing the helper by transferring some eth", function () {
+  revertAfter();
+
   describe("No nested describe", function () {
-    sharedBeforeEach(network.provider, async function () {
+    revertAfter();
+    sharedBeforeEach(async function () {
       await send1WeiToTestAccount();
     });
 
@@ -17,22 +21,24 @@ describe("Testing the helper by transferring some eth", function () {
   describe("With a nested describe", function () {
     sharedBeforeEach(
       "Optional title, like in beforeEach. Helpful for debugging",
-      network.provider,
       async function () {
         await send1WeiToTestAccount();
       }
     );
 
     describe("With two weis", function () {
-      sharedBeforeEach(network.provider, async function () {
-        await send1WeiToTestAccount();
-        throw new Error();
-      });
+      sharedBeforeEach(
+        "You can also pass the network provider as the last param",
+        async function () {
+          await send1WeiToTestAccount();
+        },
+        network.provider
+      );
 
       testWithNWei(2);
 
       describe("With three weis", function () {
-        sharedBeforeEach(network.provider, async function () {
+        sharedBeforeEach(async function () {
           await send1WeiToTestAccount();
         });
 
@@ -43,6 +49,14 @@ describe("Testing the helper by transferring some eth", function () {
     });
 
     testWithNWei(1);
+  });
+
+  describe("The state modifications of the last test shouldn't be reverted", function () {
+    sharedBeforeEach(async function () {
+      await send1WeiToTestAccount();
+    });
+
+    testWithNWei(4);
   });
 });
 

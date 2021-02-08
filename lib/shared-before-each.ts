@@ -1,111 +1,75 @@
 import { EthereumProvider } from "hardhat/types";
 
-declare module "mocha" {
-  interface Test {
-    __alreadyResetted?: boolean;
-  }
-}
+import { wrapWithTitle, takeSnapshot, revert, getProvider } from "./utils";
+
+const SNAPSHOTS: string[] = [];
 
 /**
- * This Mocha helper acts as a beforeEach, but executes the initializer
+ * This Mocha helper acts as a `beforeEach`, but executes the initializer
  * just once. It internally uses Hardhat Network and Ganache's snapshots
  * and revert instead of re-executing the initializer.
  *
+ * Note that after the last test is run, the state doesn't get reverted.
+ *
  * @param title A title that's included in all the hooks that this helper uses.
- * @param provider The network provider.
  * @param initializer The initializer to be run before the tests.
+ * @param provider The network provider.
  */
 export function sharedBeforeEach(
   title: string,
-  provider: EthereumProvider,
-  initializer: () => Promise<void>
+  initializer: Mocha.AsyncFunc,
+  provider?: EthereumProvider
 ): void;
 export function sharedBeforeEach(
-  provider: EthereumProvider,
-  initializer: () => Promise<void>
+  initializer: Mocha.AsyncFunc,
+  provider?: EthereumProvider
 ): void;
 export function sharedBeforeEach(
-  titleOrProvider: string | EthereumProvider,
-  providerOrInitializer: EthereumProvider | (() => Promise<void>),
-  _initializer?: () => Promise<void>
+  titleOrInitializer: string | Mocha.AsyncFunc,
+  initializerOrProvider?: Mocha.AsyncFunc | EthereumProvider,
+  optionalProvider?: EthereumProvider
 ) {
   const title =
-    typeof titleOrProvider === "string" ? titleOrProvider : undefined;
-  const provider =
-    typeof titleOrProvider === "string"
-      ? (providerOrInitializer as EthereumProvider)
-      : titleOrProvider;
-  const initializer =
-    "request" in providerOrInitializer ? _initializer! : providerOrInitializer;
+    typeof titleOrInitializer === "string" ? titleOrInitializer : undefined;
 
-  let initalStateSnapshot: string;
-  let afterInitializationSnapshot: string;
-
-  before(
-    wrapWithTitle(title, "Taking a snapshot of the initial state"),
-    async function () {
-      initalStateSnapshot = (await provider.request({
-        method: "evm_snapshot",
-      })) as string;
-    }
-  );
-
-  before(
-    wrapWithTitle(
-      title,
-      "Running the initializer and taking a snapshot of the results"
-    ),
-    async function () {
-      await initializer();
-
-      afterInitializationSnapshot = (await provider.request({
-        method: "evm_snapshot",
-      })) as string;
-    }
-  );
-
-  afterEach(
-    wrapWithTitle(
-      title,
-      "Reseting to the latest snapshot after running a test"
-    ),
-    async function () {
-      if (this.currentTest === undefined || this.currentTest === null) {
-        return;
-      }
-
-      if (this.currentTest.__alreadyResetted === true) {
-        return;
-      }
-
-      await provider.request({
-        method: "evm_revert",
-        params: [afterInitializationSnapshot],
-      });
-
-      afterInitializationSnapshot = (await provider.request({
-        method: "evm_snapshot",
-      })) as string;
-
-      this.currentTest.__alreadyResetted = true;
-    }
-  );
-
-  after(
-    wrapWithTitle(title, "Resetting to the initial state"),
-    async function () {
-      await provider.request({
-        method: "evm_revert",
-        params: [initalStateSnapshot],
-      });
-    }
-  );
-}
-
-function wrapWithTitle(title: string | undefined, str: string) {
-  if (title === undefined) {
-    return str;
+  let initializer: Mocha.AsyncFunc;
+  let maybeProvider: EthereumProvider | undefined;
+  if (typeof titleOrInitializer === "function") {
+    initializer = titleOrInitializer;
+    maybeProvider = initializerOrProvider as EthereumProvider | undefined;
+  } else {
+    initializer = initializerOrProvider as Mocha.AsyncFunc;
+    maybeProvider = optionalProvider;
   }
 
-  return `${title} at step "${str}"`;
+  let intialized = false;
+
+  beforeEach(
+    wrapWithTitle(title, "Running shared before each or reverting"),
+    async function () {
+      const provider = await getProvider(maybeProvider);
+      if (!intialized) {
+        const prevSnapshot = SNAPSHOTS.pop();
+        if (prevSnapshot !== undefined) {
+          await revert(provider, prevSnapshot);
+          SNAPSHOTS.push(await takeSnapshot(provider));
+        }
+
+        await initializer.call(this);
+
+        SNAPSHOTS.push(await takeSnapshot(provider));
+        intialized = true;
+      } else {
+        const snapshotId = SNAPSHOTS.pop()!;
+        await revert(provider, snapshotId);
+        SNAPSHOTS.push(await takeSnapshot(provider));
+      }
+    }
+  );
+
+  after(async function () {
+    if (intialized) {
+      SNAPSHOTS.pop();
+    }
+  });
 }
